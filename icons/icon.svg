@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#0a0e1a"/>
+  <!-- NYC skyline silhouette -->
+  <g fill="#e63946">
+    <rect x="30" y="300" width="40" height="120"/>
+    <rect x="80" y="260" width="30" height="160"/>
+    <rect x="118" y="220" width="50" height="200"/>
+    <rect x="176" y="240" width="35" height="180"/>
+    <rect x="218" y="180" width="60" height="240"/>
+    <rect x="285" y="200" width="45" height="220"/>
+    <rect x="338" y="230" width="35" height="190"/>
+    <rect x="380" y="250" width="50" height="170"/>
+    <rect x="438" y="280" width="40" height="140"/>
+    <!-- Empire State spire -->
+    <rect x="232" y="100" width="14" height="80"/>
+    <polygon points="239,60 232,100 246,100"/>
+  </g>
+  <!-- Map pin -->
+  <circle cx="256" cy="140" r="50" fill="#4cc9f0" opacity="0.9"/>
+  <circle cx="256" cy="140" r="25" fill="#0a0e1a"/>
+  <text x="256" y="148" font-family="Arial" font-size="22" font-weight="bold" fill="#4cc9f0" text-anchor="middle">NY</text>
+</svg>

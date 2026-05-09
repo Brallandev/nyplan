@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NYC 2-Day Adventure</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#e63946">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NYC Trip">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-top">
+    <div class="brand">
+      <span class="brand-icon">🗽</span>
+      <div>
+        <div class="brand-title">NYC Adventure</div>
+        <div class="brand-sub">2 días en Nueva York</div>
+      </div>
+    </div>
+    <div class="live-clock" id="liveClock">--:--</div>
+  </div>
+
+  <!-- Day Tabs -->
+  <div class="day-tabs">
+    <button class="day-tab active" data-day="1" onclick="app.setDay(1)">
+      <span class="tab-label">Día 1</span>
+      <span class="tab-date">Brooklyn & Downtown</span>
+    </button>
+    <button class="day-tab" data-day="2" onclick="app.setDay(2)">
+      <span class="tab-label">Día 2</span>
+      <span class="tab-date">Midtown & Uptown</span>
+    </button>
+  </div>
+</header>
+
+<!-- ── BUDGET BAR ─────────────────────────────────────────────────────────── -->
+<div class="budget-strip" id="budgetStrip">
+  <div class="budget-item">
+    <span class="budget-label">Día</span>
+    <span class="budget-value" id="dayTotal">$0</span>
+  </div>
+  <div class="budget-divider"></div>
+  <div class="budget-item">
+    <span class="budget-label">Total</span>
+    <span class="budget-value" id="grandTotal">$0</span>
+  </div>
+  <div class="budget-divider"></div>
+  <div class="budget-item progress-item">
+    <span class="budget-label">Progreso</span>
+    <div class="time-progress-bar">
+      <div class="time-progress-fill" id="timeProgressFill"></div>
+    </div>
+    <span class="budget-value" id="timeProgressLabel">--</span>
+  </div>
+</div>
+
+<!-- ── MAP ────────────────────────────────────────────────────────────────── -->
+<div class="map-section">
+  <div id="map"></div>
+  <div class="map-legend">
+    <span class="legend-item"><span class="legend-dot food"></span>Comida</span>
+    <span class="legend-item"><span class="legend-dot transport"></span>Metro</span>
+    <span class="legend-item"><span class="legend-dot attraction"></span>Atracción</span>
+    <span class="legend-item"><span class="legend-dot walk"></span>Caminata</span>
+    <span class="legend-item"><span class="legend-dot night"></span>Noche</span>
+  </div>
+</div>
+
+<!-- ── TIMELINE ───────────────────────────────────────────────────────────── -->
+<main class="timeline-section">
+  <div class="timeline-header">
+    <h2 class="timeline-title" id="timelineTitle">Día 1 — Itinerario</h2>
+    <div class="timeline-stats" id="timelineStats"></div>
+  </div>
+  <div class="timeline" id="timeline"></div>
+</main>
+
+<!-- ── ACTIVITY DETAIL MODAL ─────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay" onclick="app.closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="app.closeModal()">✕</button>
+
+    <div class="modal-type-badge" id="modalBadge"></div>
+    <h2 class="modal-title" id="modalTitle"></h2>
+    <div class="modal-time" id="modalTime"></div>
+
+    <p class="modal-description" id="modalDescription"></p>
+
+    <div class="modal-meta" id="modalMeta"></div>
+
+    <div class="modal-tips" id="modalTips">
+      <h3 class="tips-title">💡 Tips</h3>
+      <ul class="tips-list" id="tipsList"></ul>
+    </div>
+
+    <div class="modal-actions">
+      <a class="btn-navigate" id="btnNavigate" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        Abrir en Google Maps
+      </a>
+      <a class="btn-directions" id="btnDirections" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21.71 11.29l-9-9a1 1 0 00-1.42 0l-9 9a1 1 0 000 1.42l9 9a1 1 0 001.42 0l9-9a1 1 0 000-1.42zM14 14.5V12h-4v3H8v-4a1 1 0 011-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+        </svg>
+        Cómo llegar
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ── BUDGET OVERVIEW PANEL ──────────────────────────────────────────────── -->
+<div class="fab-container">
+  <button class="fab" id="fabBudget" onclick="app.toggleBudgetPanel()" title="Ver presupuesto">
+    💰
+  </button>
+</div>
+
+<div class="budget-panel" id="budgetPanel">
+  <div class="budget-panel-header">
+    <h3>Resumen de Gastos</h3>
+    <button onclick="app.toggleBudgetPanel()">✕</button>
+  </div>
+  <div class="budget-panel-body" id="budgetPanelBody"></div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
