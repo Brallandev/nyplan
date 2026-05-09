@@ -1,11 +1,11 @@
-const CACHE = 'nyc-trip-v1';
+const CACHE = 'nyc-trip-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/data.js',
-  '/manifest.json',
+  './',
+  './index.html',
+  './styles.css',
+  './app.js',
+  './data.js',
+  './manifest.json',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
@@ -41,7 +41,7 @@ self.addEventListener('notificationclick', e => {
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       if (list.length) return list[0].focus();
-      return clients.openWindow('/');
+      return clients.openWindow('./index.html');
     })
   );
 });

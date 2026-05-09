@@ -2,9 +2,10 @@
   "name": "NYC 2-Day Adventure",
   "short_name": "NYC Trip",
   "description": "Plan interactivo de 2 días en Nueva York con mapa, presupuesto y tips",
-  "start_url": "/",
+  "start_url": "/nyplan/",
+  "scope": "/nyplan/",
   "display": "standalone",
-  "background_color": "#0a0e1a",
+  "background_color": "#e63946",
   "theme_color": "#e63946",
   "orientation": "portrait-primary",
   "icons": [
@@ -12,13 +13,25 @@
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["travel", "navigation"],
