@@ -169,7 +169,25 @@ const app = (() => {
     });
   }
 
-  function renderMap(day) {
+  // Straight-line fallback
+  function drawFallbackRoute(coords) {
+    routeLine = L.polyline(coords, {
+      color: '#e63946', weight: 2.5, opacity: 0.55, dashArray: '7, 7'
+    }).addTo(map);
+  }
+
+  // Fetch road-snapped geometry from OSRM public server
+  // OSRM uses lng,lat order and returns a GeoJSON geometry
+  async function fetchOsrmRoute(latLngArray) {
+    const waypointStr = latLngArray.map(([lat, lng]) => `${lng},${lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/foot/${waypointStr}?overview=full&geometries=geojson&steps=false`;
+    const res  = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes[0]) throw new Error('No route');
+    return data.routes[0].geometry; // GeoJSON LineString
+  }
+
+  async function renderMap(day) {
     const acts = dayActivities(day);
 
     // Clear previous
@@ -179,19 +197,11 @@ const app = (() => {
 
     if (!acts.length) return;
 
-    // Draw route polyline
-    const coords = acts.filter(a => a.coords).map(a => a.coords);
-    routeLine = L.polyline(coords, {
-      color: '#e63946',
-      weight: 2.5,
-      opacity: 0.6,
-      dashArray: '6, 6'
-    }).addTo(map);
+    const validActs = acts.filter(a => a.coords);
+    const coords    = validActs.map(a => a.coords);
 
-    // Add markers
-    acts.forEach((act, idx) => {
-      if (!act.coords) return;
-
+    // Show markers first so the map feels responsive while routing loads
+    validActs.forEach((act, idx) => {
       const marker = L.marker(act.coords, {
         icon: createMarkerIcon(act, false),
         zIndexOffset: idx * 10
@@ -207,10 +217,26 @@ const app = (() => {
       markers[act.id] = marker;
     });
 
-    // Fit bounds
+    // Fit map to markers immediately
+    const bounds = L.latLngBounds(coords);
+    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+
+    // Then fetch real road geometry and draw on top
     try {
-      map.fitBounds(routeLine.getBounds(), { padding: [28, 28], maxZoom: 14 });
-    } catch (_) { map.setView(coords[0], 13); }
+      const geometry = await fetchOsrmRoute(coords);
+
+      // Draw a subtle shadow/halo first for legibility on dark tiles
+      L.geoJSON(geometry, {
+        style: { color: '#000', weight: 6, opacity: 0.25, lineJoin: 'round', lineCap: 'round' }
+      }).addTo(map);
+
+      routeLine = L.geoJSON(geometry, {
+        style: { color: '#e63946', weight: 3, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }
+      }).addTo(map);
+    } catch (_) {
+      // Network unavailable or OSRM timed out — fall back to straight lines
+      drawFallbackRoute(coords);
+    }
   }
 
   function highlightMarker(id) {
