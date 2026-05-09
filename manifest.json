@@ -2,7 +2,7 @@
   "name": "NYC 2-Day Adventure",
   "short_name": "NYC Trip",
   "description": "Plan interactivo de 2 días en Nueva York con mapa, presupuesto y tips",
-  "start_url": "/nyplan/",
+  "start_url": "/nyplan/index.html",
   "scope": "/nyplan/",
   "display": "standalone",
   "background_color": "#e63946",
