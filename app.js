@@ -18,6 +18,25 @@ const app = (() => {
   let routeLine = null;
   let budgetPanelOpen = false;
 
+  // ── Trip dates ───────────────────────────────────────────────────────────
+  const TRIP_DATES = { 1: '2026-05-20', 2: '2026-05-21' };
+
+  function todayStr() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // Returns which trip day is "active" today (1, 2, or null)
+  function activeTripDay() {
+    const t = todayStr();
+    if (t === TRIP_DATES[1]) return 1;
+    if (t === TRIP_DATES[2]) return 2;
+    return null;
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────
   function fmtCost(cost, free) {
     return free ? 'Gratis' : `$${cost.toFixed(2)}`;
@@ -37,7 +56,9 @@ const app = (() => {
     return TRIP_DATA.filter(a => a.day === day);
   }
 
-  function currentActivity(acts) {
+  // Only marks an activity as current if today is the matching trip date
+  function currentActivity(acts, day) {
+    if (activeTripDay() !== day) return null;
     const now = nowMinutes();
     for (let i = 0; i < acts.length; i++) {
       const start = timeToMinutes(acts[i].time);
@@ -53,8 +74,10 @@ const app = (() => {
     return `https://www.google.com/maps/search/?api=1&query=${query}`;
   }
 
-  function directionsUrl(coords) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}&travelmode=transit`;
+  function directionsUrl(act) {
+    // Combine named location + precise coords for accurate transit routing from current position
+    const dest = encodeURIComponent(act.mapsQuery.replace(/\+/g, ' ') + ', New York');
+    return `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=transit`;
   }
 
   // ── Clock ────────────────────────────────────────────────────────────────
@@ -71,15 +94,41 @@ const app = (() => {
   }
 
   // ── Time progress ────────────────────────────────────────────────────────
-  function updateTimeProgress(acts) {
+  function updateTimeProgress(day) {
+    const acts  = dayActivities(day);
+    const fill  = document.getElementById('timeProgressFill');
+    const label = document.getElementById('timeProgressLabel');
     if (!acts.length) return;
-    const first = timeToMinutes(acts[0].time);
-    const last  = timeToMinutes(acts[acts.length - 1].time) + 90;
-    const now   = nowMinutes();
-    const pct   = Math.min(100, Math.max(0, ((now - first) / (last - first)) * 100));
 
-    document.getElementById('timeProgressFill').style.width = pct.toFixed(1) + '%';
-    document.getElementById('timeProgressLabel').textContent = pct.toFixed(0) + '%';
+    const today      = todayStr();
+    const tripDate   = TRIP_DATES[day];
+    const otherDate  = TRIP_DATES[day === 1 ? 2 : 1];
+
+    let pct;
+
+    if (today < tripDate) {
+      // Trip hasn't started for this day yet
+      pct = 0;
+      label.textContent = day === 1 ? 'Pronto' : (today < TRIP_DATES[1] ? 'Pronto' : 'Mañana');
+    } else if (today === tripDate) {
+      // It's the actual trip day — progress within the day's schedule
+      const first = timeToMinutes(acts[0].time);
+      const last  = timeToMinutes(acts[acts.length - 1].time) + 90;
+      const now   = nowMinutes();
+      pct = Math.min(100, Math.max(0, ((now - first) / (last - first)) * 100));
+      label.textContent = pct.toFixed(0) + '%';
+    } else {
+      // Day already passed
+      pct = 100;
+      label.textContent = '✓';
+    }
+
+    fill.style.width = pct.toFixed(1) + '%';
+    if (pct === 100) {
+      fill.style.background = 'linear-gradient(90deg, #2ecc71, #27ae60)';
+    } else {
+      fill.style.background = 'linear-gradient(90deg, var(--green), var(--blue))';
+    }
   }
 
   // ── Budget strip ─────────────────────────────────────────────────────────
@@ -88,7 +137,7 @@ const app = (() => {
     const daySum  = dayActs.reduce((s, a) => s + a.cost, 0);
     document.getElementById('dayTotal').textContent   = `$${daySum.toFixed(0)}`;
     document.getElementById('grandTotal').textContent = `$${GRAND_TOTAL.toFixed(0)}`;
-    updateTimeProgress(dayActs);
+    updateTimeProgress(day);
   }
 
   // ── Map ──────────────────────────────────────────────────────────────────
@@ -182,7 +231,7 @@ const app = (() => {
   // ── Timeline ─────────────────────────────────────────────────────────────
   function renderTimeline(day) {
     const acts   = dayActivities(day);
-    const curId  = currentActivity(acts);
+    const curId  = currentActivity(acts, day);
     const titles = ['', 'Brooklyn & Downtown', 'Midtown & Uptown'];
 
     document.getElementById('timelineTitle').textContent = `Día ${day} — ${titles[day]}`;
@@ -262,7 +311,7 @@ const app = (() => {
 
     // Buttons
     const navUrl  = mapsUrl(act.mapsQuery);
-    const dirUrl  = directionsUrl(act.coords);
+    const dirUrl  = directionsUrl(act);
     document.getElementById('btnNavigate').href   = navUrl;
     document.getElementById('btnDirections').href = dirUrl;
 
@@ -382,12 +431,164 @@ const app = (() => {
     }, { passive: true });
   }
 
+  // ── Notifications ─────────────────────────────────────────────────────────
+  const NOTIF_KEY = 'nyc_notif_scheduled';
+  let notifTimers = [];
+
+  function notifSupported() {
+    return 'Notification' in window;
+  }
+
+  async function requestNotifPermission() {
+    if (!notifSupported()) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+  }
+
+  function sendNotif(title, body, tag, icon) {
+    if (!notifSupported() || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(title, {
+        body,
+        tag,
+        icon: icon || 'icons/icon-192.png',
+        badge: 'icons/icon-192.png',
+        vibrate: [200, 100, 200],
+        silent: false
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (_) {}
+  }
+
+  // Schedule a notification `minutesBefore` minutes before each activity on its trip day
+  function scheduleActivityNotifs(day, minutesBefore) {
+    const acts     = dayActivities(day);
+    const dateStr  = TRIP_DATES[day];           // e.g. "2026-05-20"
+    const now      = Date.now();
+
+    acts.forEach(act => {
+      const [year, month, dayNum] = dateStr.split('-').map(Number);
+      const [h, m]                = act.time.split(':').map(Number);
+      // Fire the notification `minutesBefore` minutes early
+      const fireAt = new Date(year, month - 1, dayNum, h, m - minutesBefore, 0).getTime();
+      const delay  = fireAt - now;
+      if (delay <= 0) return;   // already past
+
+      const meta = TYPE_META[act.type];
+      const t = setTimeout(() => {
+        sendNotif(
+          `${meta.emoji} Próxima parada en ${minutesBefore} min`,
+          `${act.name} · ${act.time} · ${act.location}`,
+          act.id
+        );
+      }, delay);
+      notifTimers.push(t);
+    });
+  }
+
+  function clearScheduledNotifs() {
+    notifTimers.forEach(t => clearTimeout(t));
+    notifTimers = [];
+  }
+
+  async function toggleNotifications() {
+    const btn = document.getElementById('notifBtn');
+    const active = btn.classList.contains('notif-on');
+
+    if (active) {
+      clearScheduledNotifs();
+      btn.classList.remove('notif-on');
+      btn.title = 'Activar recordatorios';
+      showToast('🔕 Recordatorios desactivados');
+      return;
+    }
+
+    const granted = await requestNotifPermission();
+    if (!granted) {
+      showToast('⚠️ Permite notificaciones en el navegador');
+      return;
+    }
+
+    // Schedule 15-min-ahead reminders for both trip days
+    scheduleActivityNotifs(1, 15);
+    scheduleActivityNotifs(2, 15);
+
+    btn.classList.add('notif-on');
+    btn.title = 'Desactivar recordatorios';
+    showToast('🔔 Recordatorios activados — 15 min antes de cada parada');
+
+    // Fire an immediate test notification so Android shows the card right away
+    sendNotif(
+      '🗽 NYC Adventure — Recordatorios ON',
+      'Te avisaremos 15 min antes de cada actividad del viaje.',
+      'nyc-welcome'
+    );
+  }
+
+  // ── Toast helper ──────────────────────────────────────────────────────────
+  function showToast(msg) {
+    let toast = document.getElementById('appToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'appToast';
+      toast.style.cssText = `
+        position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+        background:#1c2235;color:#f0f0f0;border:1px solid #2a3050;
+        padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;
+        z-index:9999;opacity:0;transition:all .3s ease;white-space:nowrap;
+        box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;
+      `;
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 3000);
+  }
+
+  // ── Notification button in FAB area ──────────────────────────────────────
+  function injectNotifBtn() {
+    const fab = document.querySelector('.fab-container');
+    const btn = document.createElement('button');
+    btn.id        = 'notifBtn';
+    btn.title     = 'Activar recordatorios';
+    btn.innerHTML = '🔔';
+    btn.style.cssText = `
+      width:46px;height:46px;border-radius:50%;
+      background:#1c2235;border:1px solid #2a3050;
+      font-size:18px;cursor:pointer;display:flex;align-items:center;
+      justify-content:center;margin-bottom:10px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.3);transition:all .2s;
+    `;
+    btn.onclick = toggleNotifications;
+    fab.insertBefore(btn, fab.firstChild);
+
+    // Style for active state
+    const style = document.createElement('style');
+    style.textContent = `
+      #notifBtn.notif-on {
+        background: rgba(76,201,240,0.15);
+        border-color: #4cc9f0;
+        box-shadow: 0 0 0 3px rgba(76,201,240,0.2);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
     startClock();
     initMap();
-    setDay(1);
+    // Auto-select today's trip day; default to Day 1
+    setDay(activeTripDay() || 1);
     setupInteractions();
+    injectNotifBtn();
 
     // Register SW
     if ('serviceWorker' in navigator) {
@@ -396,7 +597,7 @@ const app = (() => {
 
     // Refresh time progress every minute
     setInterval(() => {
-      updateTimeProgress(dayActivities(currentDay));
+      updateTimeProgress(currentDay);
       renderTimeline(currentDay);
     }, 60000);
   }
