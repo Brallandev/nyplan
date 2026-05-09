@@ -1,6 +1,6 @@
-const CACHE   = 'nyc-trip-v4';
+const CACHE   = 'nyc-trip-v5';
 const ORIGIN  = self.location.origin;              // https://brallandev.github.io
-const BASE    = ORIGIN + '/nyplan/';
+const BASE    = ORIGIN + '/';
 const INDEX   = BASE + 'index.html';
 
 // These MUST be cached — if any fail the SW aborts install
