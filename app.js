@@ -19,7 +19,7 @@ const app = (() => {
   let budgetPanelOpen = false;
 
   // ── Trip dates ───────────────────────────────────────────────────────────
-  const TRIP_DATES = { 1: '2026-05-20', 2: '2026-05-21' };
+  // TRIP_DATES and DAY_META come from data.js
 
   function todayStr() {
     const now = new Date();
@@ -32,8 +32,9 @@ const app = (() => {
   // Returns which trip day is "active" today (1, 2, or null)
   function activeTripDay() {
     const t = todayStr();
-    if (t === TRIP_DATES[1]) return 1;
-    if (t === TRIP_DATES[2]) return 2;
+    for (const day of [0, 1, 2]) {
+      if (t === TRIP_DATES[day]) return day;
+    }
     return null;
   }
 
@@ -101,15 +102,15 @@ const app = (() => {
     if (!acts.length) return;
 
     const today      = todayStr();
-    const tripDate   = TRIP_DATES[day];
-    const otherDate  = TRIP_DATES[day === 1 ? 2 : 1];
-
+    const tripDate = TRIP_DATES[day];
     let pct;
 
     if (today < tripDate) {
-      // Trip hasn't started for this day yet
       pct = 0;
-      label.textContent = day === 1 ? 'Pronto' : (today < TRIP_DATES[1] ? 'Pronto' : 'Mañana');
+      // Check if the next trip date is tomorrow
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+      label.textContent = tomorrowStr === tripDate ? 'Mañana' : 'Pronto';
     } else if (today === tripDate) {
       // It's the actual trip day — progress within the day's schedule
       const first = timeToMinutes(acts[0].time);
@@ -258,9 +259,8 @@ const app = (() => {
   function renderTimeline(day) {
     const acts   = dayActivities(day);
     const curId  = currentActivity(acts, day);
-    const titles = ['', 'Brooklyn & Downtown', 'Midtown & Uptown'];
-
-    document.getElementById('timelineTitle').textContent = `Día ${day} — ${titles[day]}`;
+    const meta = DAY_META[day];
+    document.getElementById('timelineTitle').textContent = `${meta.label} (${meta.date})`;
     document.getElementById('timelineStats').textContent =
       `${acts.length} paradas · $${DAY_TOTALS[day].toFixed(0)} estimado`;
 
@@ -363,7 +363,7 @@ const app = (() => {
     const body = document.getElementById('budgetPanelBody');
     let html = '';
 
-    [1, 2].forEach(day => {
+    [0, 1, 2].forEach(day => {
       const acts = dayActivities(day);
       const total = DAY_TOTALS[day];
       html += `<div class="budget-section">
@@ -451,8 +451,8 @@ const app = (() => {
     document.addEventListener('touchend', e => {
       const dx = e.changedTouches[0].clientX - touchStartX;
       if (Math.abs(dx) > 80 && !document.getElementById('modalOverlay').classList.contains('open')) {
-        if (dx < 0 && currentDay === 1) setDay(2);
-        if (dx > 0 && currentDay === 2) setDay(1);
+        if (dx < 0 && currentDay < 2) setDay(currentDay + 1);
+        if (dx > 0 && currentDay > 0) setDay(currentDay - 1);
       }
     }, { passive: true });
   }
@@ -538,6 +538,7 @@ const app = (() => {
     }
 
     // Schedule 15-min-ahead reminders for both trip days
+    scheduleActivityNotifs(0, 15);
     scheduleActivityNotifs(1, 15);
     scheduleActivityNotifs(2, 15);
 
@@ -612,7 +613,7 @@ const app = (() => {
     startClock();
     initMap();
     // Auto-select today's trip day; default to Day 1
-    setDay(activeTripDay() || 1);
+    setDay(activeTripDay() ?? 0);
     setupInteractions();
     injectNotifBtn();
 
