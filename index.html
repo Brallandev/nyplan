@@ -28,26 +28,10 @@
       <span class="brand-icon">🗽</span>
       <div>
         <div class="brand-title">NYC Adventure</div>
-        <div class="brand-sub">2 días en Nueva York</div>
+        <div class="brand-sub">18 – 21 Mayo · Hell's Kitchen</div>
       </div>
     </div>
     <div class="live-clock" id="liveClock">--:--</div>
-  </div>
-
-  <!-- Day Tabs -->
-  <div class="day-tabs">
-    <button class="day-tab active" data-day="0" onclick="app.setDay(0)">
-      <span class="tab-label">Llegada</span>
-      <span class="tab-date">18 Mayo · JFK</span>
-    </button>
-    <button class="day-tab" data-day="1" onclick="app.setDay(1)">
-      <span class="tab-label">Día 1</span>
-      <span class="tab-date">20 Mayo · Brooklyn</span>
-    </button>
-    <button class="day-tab" data-day="2" onclick="app.setDay(2)">
-      <span class="tab-label">Día 2</span>
-      <span class="tab-date">21 Mayo · Midtown</span>
-    </button>
   </div>
 </header>
 
@@ -128,13 +112,10 @@
   </div>
 </div>
 
-<!-- ── BUDGET OVERVIEW PANEL ──────────────────────────────────────────────── -->
-<div class="fab-container">
-  <button class="fab" id="fabBudget" onclick="app.toggleBudgetPanel()" title="Ver presupuesto">
-    💰
-  </button>
-</div>
+<!-- ── NOTIFICATION BUTTON (floating) ────────────────────────────────────── -->
+<div class="notif-fab-wrap" id="notifFabWrap"></div>
 
+<!-- ── BUDGET PANEL ───────────────────────────────────────────────────────── -->
 <div class="budget-panel" id="budgetPanel">
   <div class="budget-panel-header">
     <h3>Resumen de Gastos</h3>
@@ -142,6 +123,44 @@
   </div>
   <div class="budget-panel-body" id="budgetPanelBody"></div>
 </div>
+
+<!-- ── CHECKLIST PANEL ────────────────────────────────────────────────────── -->
+<div class="checklist-panel" id="checklistPanel">
+  <div class="budget-panel-header">
+    <h3>✅ Checklist Pre-viaje</h3>
+    <button onclick="app.toggleChecklist()">✕</button>
+  </div>
+  <div class="checklist-body" id="checklistBody"></div>
+</div>
+
+<!-- ── BOTTOM TAB BAR (iOS style) ─────────────────────────────────────────── -->
+<nav class="tab-bar">
+  <button class="tab-bar-item active" data-day="0" onclick="app.setDay(0)">
+    <span class="tab-bar-icon">✈️</span>
+    <span class="tab-bar-label">Llegada</span>
+    <span class="tab-bar-date">18 Mayo</span>
+  </button>
+  <button class="tab-bar-item" data-day="1" onclick="app.setDay(1)">
+    <span class="tab-bar-icon">🗽</span>
+    <span class="tab-bar-label">Día 1</span>
+    <span class="tab-bar-date">20 Mayo</span>
+  </button>
+  <button class="tab-bar-item" data-day="2" onclick="app.setDay(2)">
+    <span class="tab-bar-icon">🏙️</span>
+    <span class="tab-bar-label">Día 2</span>
+    <span class="tab-bar-date">21 Mayo</span>
+  </button>
+  <button class="tab-bar-item" data-tab="checklist" onclick="app.toggleChecklist()">
+    <span class="tab-bar-icon">✅</span>
+    <span class="tab-bar-label">Checklist</span>
+    <span class="tab-bar-date" id="checklistBadge">0/10</span>
+  </button>
+  <button class="tab-bar-item" data-tab="budget" onclick="app.toggleBudgetPanel()">
+    <span class="tab-bar-icon">💰</span>
+    <span class="tab-bar-label">Gastos</span>
+    <span class="tab-bar-date">Ver todo</span>
+  </button>
+</nav>
 
 <!-- Scripts -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
